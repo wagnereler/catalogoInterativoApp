@@ -3,8 +3,8 @@ import React from 'react';
 import { View } from 'react-native';
 import { Provider } from 'react-redux';
 
+import { Colors } from '../constants/colors';
 import { AppMenu } from '../src/components/AppMenu';
-import { Colors } from '../src/constants/colors';
 import { store } from '../src/store';
 
 // OBS: seus hooks estão fora de src, então o import é a partir de /hooks

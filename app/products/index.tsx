@@ -5,7 +5,8 @@ import {
   ActivityIndicator,
   FlatList,
   Image,
-  ScrollView,
+  Modal,
+  Pressable,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -14,45 +15,71 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useDispatch } from 'react-redux';
 
+import { Colors } from '@/constants/colors';
+import { useAppTheme } from '@/hooks/use-app-theme';
 import { fetchProductsByCategory } from '@/src/services/products';
 import { Product, setSelectedProduct } from '@/src/store/slices/productsSlice';
 
-// Tema (obs: seus hooks ficam fora de src)
+type TabKey = 'masculino' | 'feminino';
 
-import { useAppTheme } from '@/hooks/use-app-theme';
-import { Colors } from '@/src/constants/colors';
-
-type CategoryConfig = {
-  key: string;
-  label: string;
-  description: string;
+type SubCategory = {
+  key: string;   // ex: mens-shirts
+  label: string; // ex: Camisas
 };
 
-const CATEGORIES: CategoryConfig[] = [
-  { key: 'mens-shirts', label: 'Masculino', description: 'Peças clássicas para eles' },
-  { key: 'womens-dresses', label: 'Feminino', description: 'Tendências e vestidos leves' },
+const MALE_SUBCATEGORIES: SubCategory[] = [
+  { key: 'mens-shirts', label: 'Camisas' },
+  { key: 'mens-shoes', label: 'Calçados' },
+  { key: 'mens-watches', label: 'Relógios' },
 ];
+
+const FEMALE_SUBCATEGORIES: SubCategory[] = [
+  { key: 'womens-bags', label: 'Bolsas' },
+  { key: 'womens-dresses', label: 'Vestidos' },
+  { key: 'womens-jewellery', label: 'Joias' },
+  { key: 'womens-shoes', label: 'Calçados' },
+  { key: 'womens-watches', label: 'Relógios' },
+];
+
+type ProductWithSub = Product & { __subCategory: string };
 
 export default function ProductsScreen() {
   const dispatch = useDispatch();
   const router = useRouter();
 
-  const theme = useAppTheme(); // 'light' | 'dark'
+  const theme = useAppTheme();
   const C = Colors[theme];
 
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [productsByCategory, setProductsByCategory] = useState<Record<string, Product[]>>({});
+  const [activeTab, setActiveTab] = useState<TabKey>('masculino');
 
-  const loadProducts = useCallback(async () => {
+  // filtro de subcategoria dentro da aba
+  const [selectedSub, setSelectedSub] = useState<string>('all');
+  const [subFilterOpen, setSubFilterOpen] = useState(false);
+
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  // guarda produtos carregados por subcategoria
+  const [productsBySub, setProductsBySub] = useState<Record<string, Product[]>>({});
+
+  const subcategories = useMemo(() => {
+    return activeTab === 'masculino' ? MALE_SUBCATEGORIES : FEMALE_SUBCATEGORIES;
+  }, [activeTab]);
+
+  const selectedSubLabel = useMemo(() => {
+    if (selectedSub === 'all') return 'Todas';
+    return subcategories.find((s) => s.key === selectedSub)?.label ?? 'Todas';
+  }, [selectedSub, subcategories]);
+
+  const loadAllSubcategories = useCallback(async () => {
     setLoading(true);
     setError(null);
 
     try {
       const results = await Promise.all(
-        CATEGORIES.map(async (category) => {
-          const products = await fetchProductsByCategory(category.key);
-          return [category.key, products] as const;
+        subcategories.map(async (sub) => {
+          const products = await fetchProductsByCategory(sub.key);
+          return [sub.key, products] as const;
         })
       );
 
@@ -61,22 +88,37 @@ export default function ProductsScreen() {
         return acc;
       }, {});
 
-      setProductsByCategory(mapped);
+      setProductsBySub(mapped);
     } catch {
       setError('Não foi possível carregar os produtos. Verifique sua conexão e tente novamente.');
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [subcategories]);
 
   useEffect(() => {
-    loadProducts();
-  }, [loadProducts]);
+    // ao trocar Masculino/Feminino, volta filtro p/ "Todas" e recarrega
+    setSelectedSub('all');
+    setProductsBySub({});
+    loadAllSubcategories();
+  }, [activeTab, loadAllSubcategories]);
 
-  const categoriesWithData = useMemo(
-    () => CATEGORIES.filter((category) => productsByCategory[category.key]?.length),
-    [productsByCategory]
-  );
+  const allProducts: ProductWithSub[] = useMemo(() => {
+    // “flatten” de todas subcategorias em uma lista única
+    const merged: ProductWithSub[] = [];
+    for (const sub of subcategories) {
+      const list = productsBySub[sub.key] ?? [];
+      for (const p of list) {
+        merged.push({ ...p, __subCategory: sub.key });
+      }
+    }
+    return merged;
+  }, [productsBySub, subcategories]);
+
+  const filteredProducts: ProductWithSub[] = useMemo(() => {
+    if (selectedSub === 'all') return allProducts;
+    return allProducts.filter((p) => p.__subCategory === selectedSub);
+  }, [allProducts, selectedSub]);
 
   const handleOpenDetails = (product: Product) => {
     dispatch(setSelectedProduct(product));
@@ -85,151 +127,244 @@ export default function ProductsScreen() {
 
   const formatPrice = (value: number) => `R$ ${value.toFixed(2)}`;
 
-  if (loading) {
-    return (
-      <SafeAreaView style={[styles.centered, { backgroundColor: C.background }]}>
-        <ActivityIndicator size="large" color={C.primary} />
-        <Text style={[styles.helperText, { color: C.subtitle }]}>Carregando catálogo...</Text>
-      </SafeAreaView>
-    );
-  }
+  const subLabelFromKey = (key: string) =>
+    subcategories.find((s) => s.key === key)?.label ?? key;
 
-  if (error) {
-    return (
-      <SafeAreaView style={[styles.centered, { backgroundColor: C.background }]}>
-        <Text style={[styles.errorText, { color: C.danger }]}>{error}</Text>
+  const renderItem = ({ item }: { item: ProductWithSub }) => (
+    <TouchableOpacity
+      style={[styles.card, { backgroundColor: C.surface, borderColor: C.border }]}
+      onPress={() => handleOpenDetails(item)}
+      activeOpacity={0.85}>
+      <Image
+        source={{ uri: item.thumbnail }}
+        style={[styles.thumb, { backgroundColor: C.background }]}
+        resizeMode="contain"
+      />
+      <View style={styles.cardInfo}>
+        <View style={styles.rowBetween}>
+          <Text style={[styles.cardTitle, { color: C.text }]} numberOfLines={2}>
+            {item.title}
+          </Text>
 
-        <TouchableOpacity
-          style={[
-            styles.button,
-            styles.retryButton,
-            { borderColor: C.primary, backgroundColor: C.surface },
-          ]}
-          onPress={loadProducts}>
-          <Text style={[styles.buttonText, { color: C.primary }]}>Tentar novamente</Text>
-        </TouchableOpacity>
-      </SafeAreaView>
-    );
-  }
+          <View style={[styles.badge, { backgroundColor: C.badgeBg }]}>
+            <Text style={[styles.badgeText, { color: C.badgeText }]}>
+              {subLabelFromKey(item.__subCategory)}
+            </Text>
+          </View>
+        </View>
+
+        <Text style={[styles.cardPrice, { color: C.primary }]}>{formatPrice(item.price)}</Text>
+
+        {item.discountPercentage ? (
+          <Text style={[styles.cardDiscount, { color: C.subtitle }]}>
+            -{item.discountPercentage.toFixed(0)}% off
+          </Text>
+        ) : null}
+      </View>
+    </TouchableOpacity>
+  );
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: C.background }]}>
-      <ScrollView contentContainerStyle={styles.content}>
-        <Text style={[styles.title, { color: C.text }]}>Catálogo por categoria</Text>
-        <Text style={[styles.subtitle, { color: C.subtitle }]}>
-          Selecione um item para ver os detalhes
-        </Text>
+      {/* Tabs principais */}
+      <View style={styles.header}>
+        <Text style={[styles.title, { color: C.text }]}>Produtos</Text>
 
-        {categoriesWithData.length === 0 ? (
-          <View style={[styles.emptyState, { backgroundColor: C.surface }]}>
-            <Text style={[styles.errorText, { color: C.danger }]}>Nenhum produto encontrado.</Text>
+        <View style={[styles.tabs, { backgroundColor: C.surface, borderColor: C.border }]}>
+          <TouchableOpacity
+            style={[
+              styles.tabButton,
+              activeTab === 'masculino' && { backgroundColor: C.primary },
+            ]}
+            onPress={() => setActiveTab('masculino')}>
+            <Text style={[styles.tabText, { color: activeTab === 'masculino' ? C.onPrimary : C.text }]}>
+              Masculino
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[
+              styles.tabButton,
+              activeTab === 'feminino' && { backgroundColor: C.primary },
+            ]}
+            onPress={() => setActiveTab('feminino')}>
+            <Text style={[styles.tabText, { color: activeTab === 'feminino' ? C.onPrimary : C.text }]}>
+              Feminino
+            </Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* Filtro por subcategoria */}
+        <TouchableOpacity
+          style={[styles.filterButton, { backgroundColor: C.surface, borderColor: C.border }]}
+          onPress={() => setSubFilterOpen(true)}
+          activeOpacity={0.85}>
+          <Text style={[styles.filterLabel, { color: C.subtitle }]}>Subcategoria</Text>
+          <Text style={[styles.filterValue, { color: C.text }]} numberOfLines={1}>
+            {selectedSubLabel}
+          </Text>
+        </TouchableOpacity>
+      </View>
+
+      {/* Conteúdo */}
+      {loading ? (
+        <View style={styles.centered}>
+          <ActivityIndicator size="large" color={C.primary} />
+          <Text style={[styles.helperText, { color: C.subtitle }]}>Carregando...</Text>
+        </View>
+      ) : error ? (
+        <View style={styles.centered}>
+          <Text style={[styles.errorText, { color: C.danger }]}>{error}</Text>
+          <TouchableOpacity
+            style={[styles.retryBtn, { borderColor: C.primary, backgroundColor: C.surface }]}
+            onPress={loadAllSubcategories}>
+            <Text style={[styles.retryText, { color: C.primary }]}>Tentar novamente</Text>
+          </TouchableOpacity>
+        </View>
+      ) : (
+        <FlatList
+          data={filteredProducts}
+          keyExtractor={(item) => String(item.id)}
+          renderItem={renderItem}
+          contentContainerStyle={styles.listContent}
+          ListEmptyComponent={
+            <Text style={[styles.emptyText, { color: C.subtitle }]}>
+              Nenhum produto nessa subcategoria.
+            </Text>
+          }
+        />
+      )}
+
+      {/* Modal do filtro */}
+      <Modal
+        transparent
+        visible={subFilterOpen}
+        animationType="fade"
+        onRequestClose={() => setSubFilterOpen(false)}>
+        <Pressable style={styles.backdrop} onPress={() => setSubFilterOpen(false)}>
+          <Pressable
+            style={[styles.sheet, { backgroundColor: C.surface, borderColor: C.border }]}
+            onPress={() => {}}>
+            <Text style={[styles.sheetTitle, { color: C.text }]}>Filtrar por subcategoria</Text>
+
             <TouchableOpacity
-              style={[
-                styles.button,
-                styles.retryButton,
-                { borderColor: C.primary, backgroundColor: C.surface },
-              ]}
-              onPress={loadProducts}>
-              <Text style={[styles.buttonText, { color: C.primary }]}>Recarregar</Text>
+              style={[styles.sheetItem, { backgroundColor: C.background }]}
+              onPress={() => {
+                setSelectedSub('all');
+                setSubFilterOpen(false);
+              }}>
+              <Text style={[styles.sheetText, { color: C.text }]}>Todas</Text>
             </TouchableOpacity>
-          </View>
-        ) : null}
 
-        {categoriesWithData.map((category) => (
-          <View key={category.key} style={[styles.section, { backgroundColor: C.surface }]}>
-            <View style={styles.sectionHeader}>
-              <View style={{ flex: 1 }}>
-                <Text style={[styles.sectionTitle, { color: C.text }]}>{category.label}</Text>
-                <Text style={[styles.sectionDescription, { color: C.subtitle }]}>
-                  {category.description}
-                </Text>
-              </View>
-              <Text style={[styles.sectionCount, { color: C.subtitle }]}>
-                {productsByCategory[category.key]?.length ?? 0} itens
-              </Text>
-            </View>
+            {subcategories.map((s) => (
+              <TouchableOpacity
+                key={s.key}
+                style={[styles.sheetItem, { backgroundColor: C.background }]}
+                onPress={() => {
+                  setSelectedSub(s.key);
+                  setSubFilterOpen(false);
+                }}>
+                <Text style={[styles.sheetText, { color: C.text }]}>{s.label}</Text>
+              </TouchableOpacity>
+            ))}
 
-            <FlatList
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              data={productsByCategory[category.key]}
-              keyExtractor={(item) => String(item.id)}
-              renderItem={({ item }) => (
-                <TouchableOpacity
-                  style={[styles.card, { backgroundColor: C.surface }]}
-                  onPress={() => handleOpenDetails(item)}
-                  activeOpacity={0.85}>
-                  <Image
-                    source={{ uri: item.thumbnail }}
-                    style={[styles.cardImage, { backgroundColor: C.background }]}
-                    resizeMode="contain"
-                  />
-                  <View style={styles.cardContent}>
-                    <Text style={[styles.cardTitle, { color: C.text }]} numberOfLines={2}>
-                      {item.title}
-                    </Text>
-                    <Text style={[styles.cardPrice, { color: C.primary }]}>
-                      {formatPrice(item.price)}
-                    </Text>
-                    {item.discountPercentage ? (
-                      <Text style={[styles.cardDiscount, { color: C.subtitle }]}>
-                        -{item.discountPercentage.toFixed(0)}% off
-                      </Text>
-                    ) : null}
-                  </View>
-                </TouchableOpacity>
-              )}
-              ItemSeparatorComponent={() => <View style={{ width: 12 }} />}
-              ListFooterComponent={() => <View style={{ width: 4 }} />}
-              contentContainerStyle={{ paddingHorizontal: 4 }}
-            />
-          </View>
-        ))}
-      </ScrollView>
+            <TouchableOpacity style={styles.sheetClose} onPress={() => setSubFilterOpen(false)}>
+              <Text style={[styles.sheetCloseText, { color: C.primary }]}>Fechar</Text>
+            </TouchableOpacity>
+          </Pressable>
+        </Pressable>
+      </Modal>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  content: { paddingHorizontal: 16, paddingBottom: 24, gap: 12 },
-  centered: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 16 },
 
-  title: { fontSize: 22, fontWeight: '700' },
-  subtitle: { marginBottom: 8 },
-
-  section: { borderRadius: 12, paddingVertical: 12, paddingHorizontal: 8, gap: 8 },
-  sectionHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 4,
+  header: {
+    paddingHorizontal: 16,
+    paddingTop: 10,
+    paddingBottom: 12,
     gap: 10,
   },
-  sectionTitle: { fontSize: 18, fontWeight: '700' },
-  sectionDescription: { fontSize: 14 },
-  sectionCount: { fontWeight: '600', fontSize: 12 },
+  title: { fontSize: 22, fontWeight: '800' },
 
-  card: { width: 180, borderRadius: 12, overflow: 'hidden' },
-  cardImage: { width: '100%', height: 160 },
-  cardContent: { padding: 10, gap: 4 },
-  cardTitle: { fontWeight: '600', fontSize: 14 },
-  cardPrice: { fontWeight: '700', fontSize: 15 },
-  cardDiscount: { fontWeight: '600', fontSize: 12 },
-
-  button: {
-    height: 46,
-    paddingHorizontal: 20,
+  tabs: {
+    flexDirection: 'row',
+    borderWidth: 1,
+    borderRadius: 12,
+    padding: 6,
+    gap: 6,
+  },
+  tabButton: {
+    flex: 1,
+    height: 42,
     borderRadius: 10,
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: 12,
   },
-  retryButton: { borderWidth: 1 },
-  buttonText: { fontWeight: '700', fontSize: 15 },
+  tabText: { fontWeight: '800' },
 
+  filterButton: {
+    borderWidth: 1,
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+  },
+  filterLabel: { fontSize: 12, fontWeight: '700' },
+  filterValue: { fontSize: 14, fontWeight: '800', marginTop: 2 },
+
+  centered: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 16 },
   helperText: { marginTop: 8 },
   errorText: { textAlign: 'center', fontSize: 16 },
 
-  emptyState: { borderRadius: 12, padding: 16, alignItems: 'center', gap: 8 },
+  retryBtn: {
+    marginTop: 12,
+    borderWidth: 1,
+    borderRadius: 10,
+    paddingHorizontal: 18,
+    height: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  retryText: { fontWeight: '800' },
+
+  listContent: { paddingHorizontal: 16, paddingBottom: 24 },
+
+  card: {
+    flexDirection: 'row',
+    borderWidth: 1,
+    borderRadius: 12,
+    overflow: 'hidden',
+    marginBottom: 12,
+  },
+  thumb: { width: 92, height: 92 },
+  cardInfo: { flex: 1, padding: 10, gap: 6 },
+  rowBetween: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8 },
+  cardTitle: { flex: 1, fontWeight: '800', fontSize: 14 },
+  cardPrice: { fontWeight: '900', fontSize: 15 },
+  cardDiscount: { fontWeight: '700', fontSize: 12 },
+
+  badge: { paddingHorizontal: 10, paddingVertical: 6, borderRadius: 999 },
+  badgeText: { fontSize: 11, fontWeight: '900' },
+
+  emptyText: { paddingHorizontal: 16, paddingTop: 20, textAlign: 'center' },
+
+  backdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.35)',
+    justifyContent: 'flex-end',
+    padding: 12,
+  },
+  sheet: {
+    borderWidth: 1,
+    borderRadius: 14,
+    padding: 12,
+    gap: 10,
+  },
+  sheetTitle: { fontWeight: '900', fontSize: 16, marginBottom: 6 },
+  sheetItem: { borderRadius: 12, paddingVertical: 12, paddingHorizontal: 12 },
+  sheetText: { fontWeight: '800' },
+  sheetClose: { paddingVertical: 10, alignItems: 'center' },
+  sheetCloseText: { fontWeight: '900' },
 });

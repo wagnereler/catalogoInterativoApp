@@ -1,6 +1,6 @@
 // src/screens/LoginScreen.tsx
+import { Colors } from '@/constants/colors';
 import { useAppTheme } from '@/hooks/use-app-theme';
-import { Colors } from '@/src/constants/colors';
 import { router } from 'expo-router';
 import React, { useState } from 'react';
 import { Alert, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';

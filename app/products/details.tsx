@@ -13,8 +13,8 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useSelector } from 'react-redux';
 
+import { Colors } from '@/constants/colors';
 import { useAppTheme } from '@/hooks/use-app-theme';
-import { Colors } from '@/src/constants/colors';
 import { fetchProductById } from '@/src/services/products';
 import { RootState } from '@/src/store';
 import { Product } from '@/src/store/slices/productsSlice';
