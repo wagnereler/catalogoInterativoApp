@@ -1,5 +1,5 @@
 // hooks/use-theme-color.ts
-import { Colors } from '@/constants/theme';
+import { Colors } from '@/src/constants/theme';
 import { useAppColorScheme } from './use-color-scheme';
 
 

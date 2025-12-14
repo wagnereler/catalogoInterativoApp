@@ -11,12 +11,13 @@ import {
 } from 'react-native';
 import { useDispatch, useSelector } from 'react-redux';
 
-import { Colors } from '@/constants/colors';
-import { useAppTheme } from '@/hooks/use-app-theme';
+
+import { Colors } from '@/src/constants/colors';
 import { RootState } from '@/src/store';
 import { logout } from '@/src/store/slices/authSlice';
 import { setSelectedProduct } from '@/src/store/slices/productsSlice';
 import { setThemeMode } from '@/src/store/slices/themeSlice';
+import { useAppTheme } from '../hooks/use-app-theme';
 
 type ThemeMode = 'light' | 'dark' | 'system';
 

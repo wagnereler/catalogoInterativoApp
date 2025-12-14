@@ -1,4 +1,8 @@
 // app/products/index.tsx
+import { Colors } from '@/src/constants/colors';
+import { useAppTheme } from '@/src/hooks/use-app-theme';
+import { fetchProductsByCategory } from '@/src/services/products';
+import { Product, setSelectedProduct } from '@/src/store/slices/productsSlice';
 import { useRouter } from 'expo-router';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
@@ -14,11 +18,6 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useDispatch } from 'react-redux';
-
-import { Colors } from '@/constants/colors';
-import { useAppTheme } from '@/hooks/use-app-theme';
-import { fetchProductsByCategory } from '@/src/services/products';
-import { Product, setSelectedProduct } from '@/src/store/slices/productsSlice';
 
 type TabKey = 'masculino' | 'feminino';
 
