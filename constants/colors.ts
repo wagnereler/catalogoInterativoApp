@@ -1,3 +1,4 @@
+// constants/colors.ts
 export const Colors = {
   light: {
     background: '#ffffff',
@@ -7,7 +8,7 @@ export const Colors = {
     primary: '#22c55e',
     onPrimary: '#0f172a',
     danger: '#ef4444',
-    border: '#e2e8f0',
+    border: '#e2e8f0', 
     badgeBg: '#e0e7ff',
     badgeText: '#1e293b',
   },
@@ -19,7 +20,7 @@ export const Colors = {
     primary: '#22c55e',
     onPrimary: '#0f172a',
     danger: '#fca5a5',
-    border: '#1f2937',
+    border: '#1f2937', 
     badgeBg: '#1f2937',
     badgeText: '#e5e7eb',
   },
