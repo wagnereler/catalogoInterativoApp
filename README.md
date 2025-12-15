@@ -1,58 +1,104 @@
-# Welcome to your Expo app 👋
+# 📱 App Catálogo Interativo
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+Projeto de aplicativo **React Native** com **Expo** (TypeScript), desenvolvido como pré-requisito para aprovação na disciplina **Programação Mobile** do curso de Engenharia da Computação da Faculdade UNIFEAF.
 
-## Get started
+## ✅ Como executar
 
-1. Install dependencies
-
-   ```bash
-   npm install
-   ```
-
-2. Start the app
-
-   ```bash
-   npx expo start
-   ```
-
-In the output, you'll find options to open the app in a
-
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
-
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
-
-## Get a fresh project
-
-When you're ready, run:
+1) Instale as dependências
 
 ```bash
-npm run reset-project
+npm install
 ```
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+2) Inicie o app
 
-## Learn more
-
-To learn more about developing your project with Expo, look at the following resources:
-
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
-
-## Join the community
-
-Join our community of developers creating universal apps.
-
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
-
-
-
-
-
-
+```bash
 npx expo start --tunnel
+```
 
+---
+
+## 🚀 Funcionalidades
+
+### 1) Autenticação (Login)
+- Simulação de login via **nome** e **e-mail**
+- Validação de campos **no próprio formulário** (mensagens inline)
+- Armazenamento temporário do usuário em **Redux Toolkit** (sessão em memória)
+
+
+
+### 2) Lista de Produtos (com Tabs)
+- Integração com a API **DummyJSON** via **Axios**
+- Navegação por abas:
+  - **Masculino**
+  - **Feminino**
+- Carregamento de produtos por **subcategorias** (endpoints por categoria)
+- Filtro por subcategoria dentro de cada aba
+- Exibição de desconto (quando aplicável)
+
+### 3) Detalhes do Produto
+- Navegação passando o parâmetro **id** (rota com parâmetro)
+- Consumo do endpoint de produto por **ID**
+- Exibição:
+  - Nome
+  - Imagem
+  - Preço com desconto (quando aplicável)
+  - Preço original (tachado, quando há desconto)
+  - Subcategoria (conforme retornado pela API)
+  - Descrição
+  - Marca
+  - Avaliação
+  - Estoque
+
+### 4) Menu Sanduíche
+- Alternância de tema:
+  - ☀️ Claro
+  - 🌙 Escuro
+  - 🖥️ Sistema
+- 🚪 Sair (logoff), retornando à tela de login e limpando estado em memória
+
+---
+
+## 🛠️ Tecnologias Utilizadas (revisado)
+
+- [React Native](https://reactnative.dev/)
+- [Expo](https://expo.dev/)
+- [TypeScript](https://www.typescriptlang.org/)
+- [Expo Router](https://docs.expo.dev/router/introduction/) (roteamento/navegação)
+- [Axios](https://axios-http.com/) (requisições HTTP)
+- [Redux Toolkit](https://redux-toolkit.js.org/) (gerenciamento de estado)
+- [React Redux](https://react-redux.js.org/) (bindings do Redux para React)
+- [react-native-safe-area-context](https://github.com/th3rdwave/react-native-safe-area-context) (SafeAreaView)
+
+> Itens removidos por não estarem presentes no código fornecido:
+> - React Navigation (o app usa **Expo Router** diretamente)
+> - AsyncStorage (não há persistência implementada atualmente)
+> - Expo Vector Icons (os ícones usados são emojis)
+
+---
+
+## 📡 API Utilizada
+
+O projeto consome dados públicos da **DummyJSON**. Documentação disponível em: https://dummyjson.com/docs/
+
+### Endpoints usados
+
+- **Produtos por categoria**
+  - `GET https://dummyjson.com/products/category/{categoria}`
+
+- **Produto por ID**
+  - `GET https://dummyjson.com/products/{id}`
+
+### Subcategorias consideradas no app
+
+**MASCULINO**
+- `mens-shirts`
+- `mens-shoes`
+- `mens-watches`
+
+**FEMININO**
+- `womens-bags`
+- `womens-dresses`
+- `womens-jewellery`
+- `womens-shoes`
+- `womens-watches`

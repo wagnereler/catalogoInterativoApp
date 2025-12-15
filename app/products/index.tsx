@@ -153,12 +153,14 @@ export default function ProductsScreen() {
         </View>
 
         <Text style={[styles.cardPrice, { color: C.primary }]}>{formatPrice(item.price)}</Text>
-
-        {item.discountPercentage ? (
+        
+        {Math.round(item.discountPercentage ?? 0) >= 1 ? (
           <Text style={[styles.cardDiscount, { color: C.subtitle }]}>
-            -{item.discountPercentage.toFixed(0)}% off
+            -{Math.round(item.discountPercentage)}% off
           </Text>
         ) : null}
+
+
       </View>
     </TouchableOpacity>
   );

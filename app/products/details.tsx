@@ -1,5 +1,4 @@
 // app/products/details.tsx
-
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useEffect, useMemo, useState } from 'react';
 import {
@@ -20,11 +19,19 @@ import { fetchProductById } from '@/src/services/products';
 import { RootState } from '@/src/store';
 import { Product } from '@/src/store/slices/productsSlice';
 
+function round2(n: number) {
+  return Math.round((n + Number.EPSILON) * 100) / 100;
+}
+
+function formatBRL(value: number) {
+  return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
+}
 
 export default function ProductDetailsScreen() {
   const router = useRouter();
   const { id: rawId } = useLocalSearchParams<{ id?: string | string[] }>();
   const id = Array.isArray(rawId) ? rawId[0] : rawId;
+
   const cachedProduct = useSelector((state: RootState) => state.products.selectedProduct);
 
   const theme = useAppTheme();
@@ -53,11 +60,13 @@ export default function ProductDetailsScreen() {
       setError(null);
 
       try {
+        // Se veio do clique na lista, aproveita o cache
         if (cachedMatchesParam) {
           setProduct(cachedProduct);
           return;
         }
 
+        // Requisito: https://dummyjson.com/products/{id}
         const fetched = await fetchProductById(id);
         if (isMounted) setProduct(fetched);
       } catch {
@@ -73,7 +82,30 @@ export default function ProductDetailsScreen() {
     };
   }, [cachedMatchesParam, cachedProduct, id]);
 
-  const formatPrice = (value: number) => `R$ ${value.toFixed(2)}`;
+  const pricing = useMemo(() => {
+    if (!product) return null;
+
+    const original = Number(product.price ?? 0);
+    const pctRaw = Number(product.discountPercentage ?? 0);
+
+    const safeOriginal = Number.isFinite(original) ? original : 0;
+    const safePctRaw = Number.isFinite(pctRaw) ? pctRaw : 0;
+
+    // Evita mostrar "-0%" e preço tachado quando o desconto for muito pequeno
+    const pctDisplay = Math.round(safePctRaw); // exibição inteira
+    const hasDiscount = pctDisplay >= 1;
+
+    const discounted = hasDiscount
+      ? round2(safeOriginal * (1 - safePctRaw / 100))
+      : safeOriginal;
+
+    return {
+      hasDiscount,
+      original: safeOriginal,
+      discounted,
+      pctDisplay,
+    };
+  }, [product]);
 
   if (loading) {
     return (
@@ -84,7 +116,7 @@ export default function ProductDetailsScreen() {
     );
   }
 
-  if (error || !product) {
+  if (error || !product || !pricing) {
     return (
       <SafeAreaView style={[styles.centered, { backgroundColor: C.background }]}>
         <Text style={[styles.errorText, { color: C.danger }]}>
@@ -116,26 +148,42 @@ export default function ProductDetailsScreen() {
               {product.category ?? 'Categoria'}
             </Text>
           </View>
-          <Text style={[styles.price, { color: C.primary }]}>{formatPrice(product.price)}</Text>
+
+          {/* Preço: com desconto em verde + original cinza tachado */}
+          <View style={styles.priceBlock}>
+            <Text style={[styles.priceDiscounted, { color: C.primary }]}>
+              {formatBRL(pricing.discounted)}
+            </Text>
+
+            {pricing.hasDiscount ? (
+              <Text style={[styles.priceOriginal, { color: C.subtitle }]}>
+                {formatBRL(pricing.original)}
+              </Text>
+            ) : null}
+          </View>
         </View>
 
-        {product.discountPercentage ? (
+        {pricing.hasDiscount ? (
           <Text style={[styles.discount, { color: C.subtitle }]}>
-            -{product.discountPercentage.toFixed(0)}% de desconto
+            -{pricing.pctDisplay}% de desconto
           </Text>
         ) : null}
 
         <Text style={[styles.description, { color: C.text }]}>{product.description}</Text>
 
-        <View style={[styles.metaRow]}>
+        <View style={styles.metaRow}>
           <View style={[styles.metaItem, { backgroundColor: C.surface }]}>
             <Text style={[styles.metaLabel, { color: C.subtitle }]}>Marca</Text>
             <Text style={[styles.metaValue, { color: C.text }]}>{product.brand ?? 'N/D'}</Text>
           </View>
+
           <View style={[styles.metaItem, { backgroundColor: C.surface }]}>
             <Text style={[styles.metaLabel, { color: C.subtitle }]}>Avaliação</Text>
-            <Text style={[styles.metaValue, { color: C.text }]}>{product.rating ?? '—'}</Text>
+            <Text style={[styles.metaValue, { color: C.text }]}>
+              {typeof product.rating === 'number' ? product.rating.toFixed(2) : '—'}
+            </Text>
           </View>
+
           <View style={[styles.metaItem, { backgroundColor: C.surface }]}>
             <Text style={[styles.metaLabel, { color: C.subtitle }]}>Estoque</Text>
             <Text style={[styles.metaValue, { color: C.text }]}>{product.stock ?? '—'}</Text>
@@ -171,7 +219,18 @@ const styles = StyleSheet.create({
 
   title: { fontSize: 22, fontWeight: '800' },
   category: { marginTop: 4, fontSize: 14 },
-  price: { fontWeight: '800', fontSize: 20 },
+
+  priceBlock: {
+    alignItems: 'flex-end',
+    gap: 2,
+    minWidth: 110,
+  },
+  priceDiscounted: { fontWeight: '900', fontSize: 20 },
+  priceOriginal: {
+    fontWeight: '700',
+    fontSize: 14,
+    textDecorationLine: 'line-through',
+  },
 
   discount: { fontWeight: '700', marginTop: 6, paddingHorizontal: 16 },
 
