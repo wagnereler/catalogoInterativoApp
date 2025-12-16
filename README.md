@@ -107,40 +107,98 @@ O projeto consome dados públicos da **DummyJSON**. Documentação disponível e
 
 
 ![alt text](image.png)
+
 Página de login apresentada ao usuário
 
 
+
+
+
+
 ![alt text](image-1.png)
+
 Validação campos nulos
 
 
+
+
+
+
 ![alt text](image-2.png)
+
 Validação nome curo e e-mail válido
 
+
+
+
+
+
 ![alt text](image-3.png)
+
 Validação bem sucedida
 
+
+
+
+
+
 ![alt text](image-4.png)
+
 Lista geral masculino
 
+
+
+
+
+
 ![alt text](image-7.png)
+
 Opções de filtros
+
+
+
+
+
 
 ![alt text](image-5.png)
+
 Lista geral feminino
 
+
+
+
+
+
 ![alt text](image-6.png)
+
 Opções de filtros
+
+
+
+
 
 
 ![alt text](image-8.png)
+
 Detalhe de produto
 
 
+
+
+
+
 ![alt text](image-9.png)
+
 Menu saduíche
 
+
+
+
+
+
 ![alt text](image-10.png)
+
+
 
 ![alt text](image-11.png)
 
